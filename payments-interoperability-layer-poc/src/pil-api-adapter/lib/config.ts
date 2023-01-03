@@ -24,6 +24,10 @@ export interface ServiceConfig {
   HOST: string;
   CORS_WHITELIST: string[];
   ALLOW_CREDENTIALS: boolean;
+  PAYMENT_EXECUTION_METHOD: string;
+  PAYER_DFSP_ID: string;
+  PAYER_ID_TYPE: string;
+  PAYER_ID_VALUE: string;
 }
 
 const RC = parse(rc('PIL_API_ADAPTER', Config)) as ServiceConfig

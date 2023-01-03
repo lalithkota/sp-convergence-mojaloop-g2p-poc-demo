@@ -16,8 +16,9 @@ import { StateResponseToolkit } from '../plugins/state'
 import { Request, ResponseObject } from '@hapi/hapi'
 import { ValidationError } from '../../validation/validation-error'
 import PaymentMultiplexer, { MojaloopSendMoneyRequest } from '../../../pil-payment-multiplexer'
-import DirectoryMultiplexer from '../../../pil-directory-multiplexer'
+// import DirectoryMultiplexer from '../../../pil-directory-multiplexer'
 import { ObjectStore } from '../../lib/obj-store'
+import Config from '../../lib/config'
 
 interface PayeeItem {
   payeeIdType: string;
@@ -49,29 +50,29 @@ const postDisbursement = async (
   h: StateResponseToolkit
 ): Promise<ResponseObject> => {
   try {
+    const paymentExecutionSystem = Config.PAYMENT_EXECUTION_METHOD
+    const payerDfspId = Config.PAYER_DFSP_ID
+    const payerIdType = Config.PAYER_ID_TYPE
+    const payerIdValue = Config.PAYER_ID_VALUE
+
+    if((!paymentExecutionSystem) && (!payerDfspId) && (!payerIdType) && (!payerIdValue)){
+      console.error(`Unable to find required variables in config, PAYMENT_EXECUTION_METHOD, PAYER_DFSP_ID, PAYER_ID_TYPE, PAYER_ID_VALUE`)
+      process.exit(1)
+    }
+
     const payeeResults: PayeeResultItem[] = []
     const disbursementRequest = _request.payload as DisbursementRequest
-    // TODO: In real implementation, the disbursement request from the client should be stored in redis here.
-    // And the Directory Multiplexer service should be notified using some kafka message event to fetch the account information for each individual item
-    // For PoC, we are looping through the payeeList and calling the DirectoryMultiplexer function directly here
+    console.log(`Here is json payload ${JSON.stringify(_request.payload)}`)
     for await (const payeeItem of disbursementRequest.payeeList) {
       try {
-        const mapInfo = await DirectoryMultiplexer.getPayeeAccountInformation({
-          payeeIdType: payeeItem.payeeIdType,
-          payeeIdValue: payeeItem.payeeIdValue
-        })
-        const paymentExecutionSystemInfo = mapInfo.paymentExecutionSystemInfo
-        // TODO: In real implementation, the payment multiplexer service should take care of the payment execution based on the 
-        // payment execution system information provided by directory multiplexer service.
-        // For PoC, we are checking the payment execution system and calling the PaymentMultiplexer function directly here
-        switch(mapInfo.paymentExecutionSystem) {
+        switch(paymentExecutionSystem) {
           case 'MOJALOOP': {
             const sendMoneyRequest : MojaloopSendMoneyRequest = {
-              payerDfspId: paymentExecutionSystemInfo.payerDfspId,
-              payerIdType: paymentExecutionSystemInfo.payerIdType,
-              payerIdValue: paymentExecutionSystemInfo.payerIdValue,
-              payeeIdType: paymentExecutionSystemInfo.payeeIdType,
-              payeeIdValue: paymentExecutionSystemInfo.payeeIdValue,
+              payerDfspId,
+              payerIdType,
+              payerIdValue,
+              payeeIdType: payeeItem.payeeIdType,
+              payeeIdValue: payeeItem.payeeIdValue,
               amount: payeeItem.amount,
               currency: payeeItem.currency
             }
@@ -99,7 +100,7 @@ const postDisbursement = async (
             break;
           }
           default: {
-            throw(new Error(`Unsupported payment execution system ${mapInfo.paymentExecutionSystem}`))
+            throw(new Error(`Unsupported payment execution system ${paymentExecutionSystem}`))
           }
         }
       } catch (err: any) {

@@ -8,5 +8,9 @@
     "http://localhost:8080",
     "http://localhost:8081"
   ],
-  "ALLOW_CREDENTIALS": false
+  "ALLOW_CREDENTIALS": false,
+  "PAYMENT_EXECUTION_METHOD": "MOJALOOP",
+  "PAYER_DFSP_ID": "GovtBankA",
+  "PAYER_ID_TYPE": "",
+  "PAYER_ID_VALUE": ""
 }
